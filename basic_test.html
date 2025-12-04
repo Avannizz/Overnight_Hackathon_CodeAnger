@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blockchain Image Test</title>
+</head>
+<body>
+
+<h2>Blockchain Image Upload Tester</h2>
+
+<input type="file" id="fileInput" accept="image/*"><br><br>
+
+<button onclick="registerFile()">Register Image</button>
+<button onclick="verifyFile()">Verify Image</button>
+
+<h3>Output:</h3>
+<pre id="output"></pre>
+
+<script>
+// -------- SHA-256 hashing in browser --------
+async function computeSHA256(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    return hashHex;
+}
+
+// -------- Register file on blockchain --------
+async function registerFile() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Select an image first!");
+
+    const hash = await computeSHA256(file);
+
+    const response = await fetch("http://127.0.0.1:8000/register-hash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash })
+    });
+
+    const data = await response.json();
+    document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+}
+
+// -------- Verify file on blockchain --------
+async function verifyFile() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Select an image first!");
+
+    const hash = await computeSHA256(file);
+
+    const response = await fetch("http://127.0.0.1:8000/verify-hash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hash })
+    });
+
+    const data = await response.json();
+    document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+}
+</script>
+
+</body>
+</html>

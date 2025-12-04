@@ -1,0 +1,7 @@
+Flask
+imagehash
+Pillow
+numpy
+scipy
+PyWavelets
+pydub

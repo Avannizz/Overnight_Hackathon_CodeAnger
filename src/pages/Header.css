@@ -1,0 +1,81 @@
+.header{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    top:0;
+    height: auto;
+    min-height: 50px;
+    background-color: #ffffff;
+    z-index: 100;
+}
+
+.header-left, .header-right {
+    flex: 1;
+}
+
+.header-left {
+    display: flex; 
+    gap: 20px;     
+    justify-content: flex-start;
+}
+
+.header-center {
+    display: flex;
+    justify-content: center;
+    flex: 1; 
+}
+
+.header-right {
+    display: flex;
+    padding:30;
+    margin-left: -1500px;
+    justify-content: flex-end; 
+}
+
+
+.header-left h1 {
+    color: #000000;
+    font-weight: bold;
+    font-family: sans-serif;
+    font-style: italic;
+    font-size: 24px; 
+    margin: 0;
+}
+
+
+.nav-item {
+    position: relative;
+    padding: 5px 10px;
+    cursor: pointer;
+    color: #555;
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.nav-item:hover {
+    color: #000;
+}
+
+.nav-item.active-tab {
+    color: #000000!important; 
+    font-weight: bold;
+    border-bottom: 2px solid #b624ff;
+}
+
+/* --- Active Tab Highlight (PNG Image) --- */
+.active-indicator {
+    position: absolute;
+    bottom: 0px; /* Adjust this value to place it correctly below the text */
+    left: 50%;
+    transform: translateX(-50%); 
+    
+    width: 60px; 
+    height: 10px; /* Give the image area a visible height */
+    
+    background-image: url("../assets/navigationgrad.png"); 
+    background-size: contain;
+    background-repeat: no-repeat;
+}

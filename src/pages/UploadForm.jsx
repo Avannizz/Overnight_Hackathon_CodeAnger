@@ -12,6 +12,7 @@ const mockResults = {
 };
 
 const UploadForm = () => {
+  const [inputUser, setInputUser] = useState('');
   const results  = mockResults ;
   const [selectedFile, setSelectedFile] = useState(null);
   const [message, setMessage] = useState('');
@@ -24,6 +25,9 @@ const UploadForm = () => {
   const handleButtonClick = () => {
         fileInputRef.current.click();
     };
+  const handleChange=(event)=>{
+    setInputUser(event.target.value);
+  };
   const handleFileUpload = async () => {
     if (!selectedFile) {
       setMessage('Please select a file first!');
@@ -76,6 +80,18 @@ const UploadForm = () => {
             >
             Upload File
             </button>
+        </div>
+        <div className="upload-user">
+            <div className='user-title'><h2>Enter Orginal User:</h2></div>
+            <input
+            type='text'
+            placeholder='Type Username here!'
+            value={inputUser}
+            onChange={handleChange}
+            display="none"
+            style={{borderRadius:"50px",width:"350px",height:"30px",border:"0px"}}
+            />
+
         </div>
         
         <div className="upload-fp">

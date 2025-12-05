@@ -32,7 +32,7 @@
 .upload-button{
     background-image: url("../assets/uploadgrad.png");
     padding:30px;
-    height: 200px;
+    height: 100px;
     width:500px;
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -43,6 +43,31 @@
     align-items: center; 
     border-radius: 30px; 
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upload-user{
+    background-image: url("../assets/uploadgrad.png");
+    margin-top: 20px;
+    height:75px;
+    width:555px;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: flex-start; /* Align content to the left */
+    align-items: center;     /* Aligns text and input vertically in the middle */
+    
+    padding-top: 0; /* Remove unnecessary padding that shifts content */
+    padding-left: 30px;
+}
+
+.user-title {
+    margin-right: 20px;
+    margin-top:-20px;
+}
+
+.user-title h2{
+    font-size: 1.1em;
+    margin:0;
 }
 
 .upload-prompt {

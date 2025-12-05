@@ -65,17 +65,3 @@
     border-bottom: 2px solid #b624ff;
 }
 
-/* --- Active Tab Highlight (PNG Image) --- */
-.active-indicator {
-    position: absolute;
-    bottom: 0px; /* Adjust this value to place it correctly below the text */
-    left: 50%;
-    transform: translateX(-50%); 
-    
-    width: 60px; 
-    height: 10px; /* Give the image area a visible height */
-    
-    background-image: url("../assets/navigationgrad.png"); 
-    background-size: contain;
-    background-repeat: no-repeat;
-}

@@ -1,136 +1,122 @@
 import hashlib
-from flask_cors import CORS
-
-
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from PIL import Image
 import imagehash
 import os
+import json
 
-# ------------------ AI FINGERPRINT IMPORTS ------------------
 import clip
 import torch
 import numpy as np
-# ------------------------------------------------------------
+
+from web3 import Web3
 
 app = Flask(__name__)
 CORS(app)
-# Fake blockchain (for demo)
-blockchain = []
 
+# ---------------- GANACHE SETUP ----------------
+GANACHE_URL = "http://127.0.0.1:7545"
+w3 = Web3(Web3.HTTPProvider(GANACHE_URL))
+SENDER = w3.eth.accounts[0]
+
+with open("MediaRegistry_abi.json", "r") as f:
+    ABI = json.load(f)
+
+CONTRACT_ADDRESS = "0x91F3472d4838835e84d528839120b36e5EC952a3"
+contract = w3.eth.contract(address=CONTRACT_ADDRESS, abi=ABI)
+
+# ---------------- IMAGE HASHING ----------------
 PHASH_THRESHOLD = 10
-AI_THRESHOLD = 0.85  # similarity threshold
+AI_THRESHOLD = 0.85
 
-# ------------------ SHA256 FUNCTION ------------------
-def compute_sha256(file_path):
-    with open(file_path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
+def compute_sha256(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
 
-# ------------------ pHASH FUNCTION ------------------
-def compute_phash(file_path):
-    image = Image.open(file_path)
-    return imagehash.phash(image)
+def compute_phash(path):
+    return imagehash.phash(Image.open(path))
 
-def is_similar(ph1, ph2):
-    return abs(ph1 - ph2) <= PHASH_THRESHOLD
-
-# ------------------ AI FINGERPRINT SETUP ------------------
+# ---------------- AI FINGERPRINT ----------------
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
-def compute_ai_fingerprint(file_path):
-    image = preprocess(Image.open(file_path)).unsqueeze(0).to(device)
-
+def compute_ai_fingerprint(path):
+    img = preprocess(Image.open(path)).unsqueeze(0).to(device)
     with torch.no_grad():
-        embedding = model.encode_image(image)
+        emb = model.encode_image(img)
+    emb = emb / emb.norm(dim=-1, keepdim=True)
+    return emb.cpu().numpy().tolist()[0]
 
-    embedding = embedding / embedding.norm(dim=-1, keepdim=True)
-    return embedding.cpu().numpy().tolist()[0]  # 512D list
-
-def ai_similarity(vec1, vec2):
-    v1 = np.array(vec1)
-    v2 = np.array(vec2)
+def ai_similarity(v1, v2):
+    v1 = np.array(v1); v2 = np.array(v2)
     return float(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2)))
 
-# ------------------------------------------------------------
-
+# Store verified media locally
+media_db = []
 
 @app.route('/upload', methods=['POST'])
 def upload_media():
-    if 'file' not in request.files:
+
+    if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
-    
-    file = request.files['file']
-    user = request.form.get('user', 'unknown_user')
 
-    # Save temporarily
-    temp_path = f"temp_{file.filename}"
-    file.save(temp_path)
+    file = request.files["file"]
+    username = request.form.get("user", "unknown")
 
-    # Compute hashes
-    sha256 = compute_sha256(temp_path)
-    phash = compute_phash(temp_path)
-    ai_fp = compute_ai_fingerprint(temp_path)
+    temp = f"temp_{file.filename}"
+    file.save(temp)
 
-    # ------------------ CHECK AGAINST BLOCKCHAIN ------------------
-    for entry in blockchain:
+    sha256 = compute_sha256(temp)
+    phash = compute_phash(temp)
+    ai_fp = compute_ai_fingerprint(temp)
 
-        # 1️⃣ Exact duplicate — SHA-256
-        if sha256 == entry["sha256"]:
-            os.remove(temp_path)
-            return jsonify({
-                "status": "rejected",
-                "reason": "Exact duplicate detected",
-                "original_owner": entry["owner"]
-            }), 200
+    # DISTILLED AI FINGERPRINT HASH FOR BLOCKCHAIN
+    ai_hash = hashlib.sha256(str(ai_fp).encode()).hexdigest()
 
-        # 2️⃣ Slightly modified — pHash
-        if is_similar(phash, entry["phash"]):
-            os.remove(temp_path)
-            return jsonify({
-                "status": "rejected",
-                "reason": "Similar image detected (pHash match)",
-                "original_owner": entry["owner"]
-            }), 200
+    # DUPLICATE CHECK
+    for item in media_db:
+        if sha256 == item["sha256"]:
+            os.remove(temp)
+            return jsonify({"status": "rejected", "reason": "Exact duplicate"}), 200
 
-        # 3️⃣ Heavily modified — AI Fingerprint
-        if "ai_fp" in entry:
-            sim = ai_similarity(ai_fp, entry["ai_fp"])
-            if sim > AI_THRESHOLD:
-                os.remove(temp_path)
-                return jsonify({
-                    "status": "rejected",
-                    "reason": "AI fingerprint match (heavily transformed copy)",
-                    "similarity": sim,
-                    "original_owner": entry["owner"]
-                }), 200
+        if abs(phash - item["phash"]) <= PHASH_THRESHOLD:
+            os.remove(temp)
+            return jsonify({"status": "rejected", "reason": "pHash match"}), 200
 
-    # ------------------ IF NEW → REGISTER ------------------
-    blockchain.append({
+        if ai_similarity(ai_fp, item["ai_fp"]) > AI_THRESHOLD:
+            os.remove(temp)
+            return jsonify({"status": "rejected", "reason": "AI fingerprint match"}), 200
+
+    # ADD LOCALLY
+    media_db.append({
         "sha256": sha256,
         "phash": phash,
         "ai_fp": ai_fp,
-        "owner": user
+        "owner": username
     })
 
-    os.remove(temp_path)
+    # WRITE TO BLOCKCHAIN (compact hash = cheap gas)
+    tx = contract.functions.storeMedia(
+        sha256,
+        str(phash),
+        ai_hash
+    ).transact({"from": SENDER})
+
+    receipt = w3.eth.wait_for_transaction_receipt(tx)
+    os.remove(temp)
 
     return jsonify({
         "status": "registered",
-        "owner": user
-    }), 200
+        "tx_hash": receipt.transactionHash.hex(),
+        "owner": username,
+        "sha256_hash": sha256,
+        "phash_hash": str(phash)
 
+    })
 
 @app.route('/blockchain', methods=['GET'])
-def show_blockchain():
-    return jsonify([
-        {
-            "sha256": entry["sha256"],
-            "phash": str(entry["phash"]),
-            "owner": entry["owner"]
-        }
-        for entry in blockchain
-    ]), 200
+def get_chain():
+    return jsonify({"total_entries": contract.functions.getTotal().call()})
 
 
 if __name__ == "__main__":

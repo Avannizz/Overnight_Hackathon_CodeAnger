@@ -160,3 +160,14 @@
 .download-button:hover {
     background-color: #4b4fa0;
 }
+
+/* Status Colors for visual feedback */
+.green-status {
+    color: #28a745; /* Bootstrap Success Green */
+    font-weight: bold;
+}
+
+.red-status {
+    color: #dc3545; /* Bootstrap Danger Red */
+    font-weight: bold;
+}
